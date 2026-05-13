@@ -1,0 +1,95 @@
+package com.stockhub.purchase.exception;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+class GlobalExceptionHandlerTest {
+
+    private GlobalExceptionHandler handler;
+
+    @BeforeEach
+    void setUp() {
+        handler = new GlobalExceptionHandler();
+    }
+
+    @Test
+    void handlePONotFound_returns404() {
+        PONotFoundException ex = new PONotFoundException("PO not found: 99");
+
+        ResponseEntity<Map<String, Object>> response = handler.handlePONotFound(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).containsEntry("status", 404);
+        assertThat(response.getBody()).containsEntry("message", "PO not found: 99");
+        assertThat(response.getBody()).containsKey("timestamp");
+    }
+
+    @Test
+    void handleInvalidStatus_returns400() {
+        InvalidPOStatusException ex = new InvalidPOStatusException("Only DRAFT PO can be submitted");
+
+        ResponseEntity<Map<String, Object>> response = handler.handleInvalidStatus(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("status", 400);
+        assertThat(response.getBody()).containsEntry("message", "Only DRAFT PO can be submitted");
+        assertThat(response.getBody()).containsKey("timestamp");
+    }
+
+    @Test
+    void handleSupplierNotActive_returns400() {
+        SupplierNotActiveException ex = new SupplierNotActiveException("Cannot create PO for inactive supplier");
+
+        ResponseEntity<Map<String, Object>> response = handler.handleSupplierNotActive(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("status", 400);
+        assertThat(response.getBody()).containsEntry("message", "Cannot create PO for inactive supplier");
+        assertThat(response.getBody()).containsKey("timestamp");
+    }
+
+    @Test
+    void handleValidation_returns400WithFieldErrors() {
+        MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
+        BindingResult bindingResult = mock(BindingResult.class);
+        FieldError fieldError = new FieldError("poRequest", "supplierId", "must not be null");
+
+        when(ex.getBindingResult()).thenReturn(bindingResult);
+        when(bindingResult.getAllErrors()).thenReturn(List.of(fieldError));
+
+        ResponseEntity<Map<String, Object>> response = handler.handleValidation(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).containsEntry("status", 400);
+        assertThat(response.getBody()).containsEntry("message", "Validation failed");
+        assertThat(response.getBody()).containsKey("errors");
+        assertThat(response.getBody()).containsKey("timestamp");
+
+        @SuppressWarnings("unchecked")
+        Map<String, String> errors = (Map<String, String>) response.getBody().get("errors");
+        assertThat(errors).containsEntry("supplierId", "must not be null");
+    }
+
+    @Test
+    void handleGeneric_returns500() {
+        Exception ex = new RuntimeException("Unexpected error");
+
+        ResponseEntity<Map<String, Object>> response = handler.handleGeneric(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody()).containsEntry("status", 500);
+        assertThat(response.getBody()).containsEntry("message", "Something went wrong");
+        assertThat(response.getBody()).containsKey("timestamp");
+    }
+}

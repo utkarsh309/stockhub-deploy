@@ -1,0 +1,7 @@
+# Exclude everything that doesn't need to be in the Docker build context
+target/
+*.md
+.git
+.gitignore
+.idea
+*.iml
