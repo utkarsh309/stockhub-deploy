@@ -65,6 +65,15 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Rate Limiter -->
+		<!-- Spring Cloud Gateway Redis Rate Limiter requires reactive Redis  -->
+		<!-- Uses token bucket algorithm stored in Redis per client IP        -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+		</dependency>
+
+
 		<!-- WebFlux version for Swagger -->
 		<dependency>
 			<groupId>org.springdoc</groupId>

@@ -2,10 +2,14 @@ package com.stockhub.gateway.config;
 
 import com.stockhub.gateway.filter.JwtAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
+import org.springframework.cloud.gateway.filter.ratelimit.RedisRateLimiter;
 import org.springframework.cloud.gateway.route.RouteLocator;
 import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+
 import java.util.Arrays;
 
 @Configuration
@@ -13,6 +17,13 @@ public class GatewayConfig {
 
     @Autowired
     private JwtAuthenticationFilter jwtFilter;
+
+    //Rate Limiter beans injected from RateLimiterConfig
+    @Autowired
+    private RedisRateLimiter redisRateLimiter;
+
+    @Autowired
+    private KeyResolver ipKeyResolver;
 
     @Bean
     public RouteLocator customRouteLocator(
@@ -28,6 +39,11 @@ public class GatewayConfig {
                 .route("auth-public", r -> r
                         .path("/api/auth/login",
                                 "/api/auth/users/role/**")
+                        .filters(f -> f.requestRateLimiter(c -> {
+                            c.setRateLimiter(redisRateLimiter);
+                            c.setKeyResolver(ipKeyResolver);
+                            c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                        }))
                         .uri("lb://auth-service"))
 
 
@@ -37,8 +53,13 @@ public class GatewayConfig {
                                 "/api/auth/users/**",
                                 "/api/auth/register")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://auth-service"))
 
                 // Protected - Any logged in user
@@ -47,8 +68,13 @@ public class GatewayConfig {
                         .path("/api/auth/users/{userId}/profile",
                                 "/api/auth/users/{userId}/password")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        anyAuthenticated())))
+                                        jwtFilter.apply(
+                                                anyAuthenticated()))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://auth-service"))
 
 
@@ -63,8 +89,13 @@ public class GatewayConfig {
                                 "/api/products/**")
                         .and().method("GET")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        anyAuthenticated())))
+                                        jwtFilter.apply(
+                                                anyAuthenticated()))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://product-service"))
 
                 // Protected POST - Create product
@@ -73,9 +104,14 @@ public class GatewayConfig {
                         .path("/api/products")
                         .and().method("POST")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("MANAGER",
-                                                "ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("MANAGER",
+                                                        "ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://product-service"))
 
                 // Protected PUT - Update/Deactivate product
@@ -84,9 +120,14 @@ public class GatewayConfig {
                         .path("/api/products/**")
                         .and().method("PUT", "DELETE")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("MANAGER",
-                                                "ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("MANAGER",
+                                                        "ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://product-service"))
 
 
@@ -99,8 +140,13 @@ public class GatewayConfig {
                                 "/api/warehouses/**")
                         .and().method("GET")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        anyAuthenticated())))
+                                        jwtFilter.apply(
+                                                anyAuthenticated()))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://warehouse-service"))
 
                 // ADMIN only - Create/Update warehouses
@@ -110,8 +156,13 @@ public class GatewayConfig {
                         .and().method("POST",
                                 "PUT", "DELETE")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://warehouse-service"))
 
 
@@ -123,8 +174,13 @@ public class GatewayConfig {
                         .path("/api/stock/**")
                         .and().method("GET")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        anyAuthenticated())))
+                                        jwtFilter.apply(
+                                                anyAuthenticated()))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://warehouse-service"))
 
                 // STAFF, MANAGER, ADMIN
@@ -132,10 +188,15 @@ public class GatewayConfig {
                 .route("stock-add", r -> r
                         .path("/api/stock/add")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("STAFF",
-                                                "MANAGER",
-                                                "ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("STAFF",
+                                                        "MANAGER",
+                                                        "ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://warehouse-service"))
 
                 // STAFF, MANAGER, ADMIN
@@ -143,10 +204,15 @@ public class GatewayConfig {
                 .route("stock-deduct", r -> r
                         .path("/api/stock/deduct")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("STAFF",
-                                                "MANAGER",
-                                                "ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("STAFF",
+                                                        "MANAGER",
+                                                        "ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://warehouse-service"))
 
                 // STAFF, MANAGER, ADMIN
@@ -154,10 +220,15 @@ public class GatewayConfig {
                 .route("stock-transfer", r -> r
                         .path("/api/stock/transfer")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("STAFF",
-                                                "MANAGER",
-                                                "ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("STAFF",
+                                                        "MANAGER",
+                                                        "ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://warehouse-service"))
 
                 // MANAGER, OFFICER, ADMIN
@@ -166,10 +237,15 @@ public class GatewayConfig {
                         .path("/api/stock/reserve",
                                 "/api/stock/release")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("MANAGER",
-                                                "OFFICER",
-                                                "ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("MANAGER",
+                                                        "OFFICER",
+                                                        "ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://warehouse-service"))
 
                 // STAFF, MANAGER, ADMIN
@@ -178,10 +254,15 @@ public class GatewayConfig {
                         .path("/api/stock/adjust/**",
                                 "/api/stock/write-off")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("STAFF",
-                                                "MANAGER",
-                                                "ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("STAFF",
+                                                        "MANAGER",
+                                                        "ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://warehouse-service"))
 
 
@@ -194,8 +275,13 @@ public class GatewayConfig {
                                 "/api/suppliers/**")
                         .and().method("GET")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        anyAuthenticated())))
+                                        jwtFilter.apply(
+                                                anyAuthenticated()))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://supplier-service"))
 
                 // OFFICER, ADMIN - Create supplier
@@ -203,9 +289,14 @@ public class GatewayConfig {
                         .path("/api/suppliers")
                         .and().method("POST")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("OFFICER",
-                                                "ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("OFFICER",
+                                                        "ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://supplier-service"))
 
                 // OFFICER, ADMIN - Update and rate supplier
@@ -213,9 +304,14 @@ public class GatewayConfig {
                         .path("/api/suppliers/**")
                         .and().method("PUT")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("OFFICER",
-                                                "ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("OFFICER",
+                                                        "ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://supplier-service"))
 
 
@@ -228,8 +324,13 @@ public class GatewayConfig {
                                 "/api/purchase-orders/**")
                         .and().method("GET")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        anyAuthenticated())))
+                                        jwtFilter.apply(
+                                                anyAuthenticated()))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://purchase-service"))
 
                 // OFFICER, ADMIN - Create PO
@@ -237,9 +338,14 @@ public class GatewayConfig {
                         .path("/api/purchase-orders")
                         .and().method("POST")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("OFFICER",
-                                                "ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("OFFICER",
+                                                        "ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://purchase-service"))
 
                 // OFFICER, ADMIN - Submit and cancel PO
@@ -247,9 +353,14 @@ public class GatewayConfig {
                         .path("/api/purchase-orders/*/submit",
                                 "/api/purchase-orders/*/cancel")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("OFFICER",
-                                                "ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("OFFICER",
+                                                        "ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://purchase-service"))
 
                 // MANAGER, ADMIN - Approve and reject PO
@@ -257,19 +368,29 @@ public class GatewayConfig {
                         .path("/api/purchase-orders/*/approve",
                                 "/api/purchase-orders/*/reject")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("MANAGER",
-                                                "ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("MANAGER",
+                                                        "ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://purchase-service"))
 
                 // STAFF, MANAGER, ADMIN - Receive goods
                 .route("po-receive", r -> r
                         .path("/api/purchase-orders/*/receive")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("STAFF",
-                                                "MANAGER",
-                                                "ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("STAFF",
+                                                        "MANAGER",
+                                                        "ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://purchase-service"))
 
 
@@ -282,8 +403,13 @@ public class GatewayConfig {
                                 "/api/movements/**")
                         .and().method("GET")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        anyAuthenticated())))
+                                        jwtFilter.apply(
+                                                anyAuthenticated()))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://movement-service"))
 
                 // Internal only - Record movement
@@ -293,8 +419,13 @@ public class GatewayConfig {
                         .path("/api/movements")
                         .and().method("POST")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("ADMIN", "MANAGER", "STAFF"))))
+                                        jwtFilter.apply(
+                                                withRoles("ADMIN", "MANAGER", "STAFF")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://movement-service"))
 
 
@@ -307,8 +438,13 @@ public class GatewayConfig {
                                 "/api/alerts/**")
                         .and().method("GET")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        anyAuthenticated())))
+                                        jwtFilter.apply(
+                                                anyAuthenticated()))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://alert-service"))
 
                 // All roles can mark read acknowledge
@@ -316,8 +452,13 @@ public class GatewayConfig {
                         .path("/api/alerts/**")
                         .and().method("PUT")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        anyAuthenticated())))
+                                        jwtFilter.apply(
+                                                anyAuthenticated()))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://alert-service"))
 
                 // MANAGER, ADMIN - Create alert
@@ -325,9 +466,14 @@ public class GatewayConfig {
                         .path("/api/alerts")
                         .and().method("POST")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("MANAGER",
-                                                "ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("MANAGER",
+                                                        "ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://alert-service"))
 
                 // ADMIN only - Delete alert
@@ -335,8 +481,13 @@ public class GatewayConfig {
                         .path("/api/alerts/**")
                         .and().method("DELETE")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://alert-service"))
 
                 // Add manual trigger route
@@ -344,8 +495,13 @@ public class GatewayConfig {
                         .path("/api/alerts/trigger-check")
                         .and().method("POST")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://alert-service"))
 
 
@@ -358,9 +514,14 @@ public class GatewayConfig {
                                 "/api/reports/**")
                         .and().method("GET")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("MANAGER",
-                                                "ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("MANAGER",
+                                                        "ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://report-service"))
 
                 // ADMIN only - Take manual snapshot
@@ -368,8 +529,13 @@ public class GatewayConfig {
                         .path("/api/reports/snapshot")
                         .and().method("POST")
                         .filters(f -> f.filter(
-                                jwtFilter.apply(
-                                        withRoles("ADMIN"))))
+                                        jwtFilter.apply(
+                                                withRoles("ADMIN")))
+                                .requestRateLimiter(c -> {
+                                    c.setRateLimiter(redisRateLimiter);
+                                    c.setKeyResolver(ipKeyResolver);
+                                    c.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
+                                }))
                         .uri("lb://report-service"))
 
 

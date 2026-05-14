@@ -29,7 +29,7 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     ports:
       - "5672:5672"
-      - "15672:15672"
+      - "15672:15672"   # RabbitMQ management UI
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     networks:
@@ -55,10 +55,12 @@ services:
       timeout: 5s
       retries: 5
 
-  # ─── Eureka Server ─────────────────────────────────────────────────────
+  # ─── Eureka Server (must start before all microservices) ───────────────
 
   eureka-server:
-    image: utkarshraj309/eureka-server:latest
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
     container_name: stockhub-eureka
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -74,9 +76,13 @@ services:
       retries: 5
 
   # ─── Microservices ─────────────────────────────────────────────────────
+  # All depend on eureka-server being healthy first
+  # Services that need mysql wait for mysql to be healthy too
 
   auth-service:
-    image: utkarshraj309/auth-service:latest
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
     container_name: stockhub-auth
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -97,7 +103,9 @@ services:
       - stockhub-network
 
   product-service:
-    image: utkarshraj309/product-service:latest
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile
     container_name: stockhub-product
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -119,7 +127,9 @@ services:
       - stockhub-network
 
   warehouse-service:
-    image: utkarshraj309/warehouse-service:latest
+    build:
+      context: ./warehouse-service
+      dockerfile: Dockerfile
     container_name: stockhub-warehouse
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -141,7 +151,9 @@ services:
       - stockhub-network
 
   purchase-service:
-    image: utkarshraj309/purchase-service:latest
+    build:
+      context: ./purchase-service
+      dockerfile: Dockerfile
     container_name: stockhub-purchase
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -160,7 +172,9 @@ services:
       - stockhub-network
 
   supplier-service:
-    image: utkarshraj309/supplier-service:latest
+    build:
+      context: ./supplier-service
+      dockerfile: Dockerfile
     container_name: stockhub-supplier
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -179,7 +193,9 @@ services:
       - stockhub-network
 
   movement-service:
-    image: utkarshraj309/movement-service:latest
+    build:
+      context: ./movement-service
+      dockerfile: Dockerfile
     container_name: stockhub-movement
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -198,7 +214,9 @@ services:
       - stockhub-network
 
   alert-service:
-    image: utkarshraj309/alert-service:latest
+    build:
+      context: ./alert-service
+      dockerfile: Dockerfile
     container_name: stockhub-alert
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -226,7 +244,9 @@ services:
       - stockhub-network
 
   report-service:
-    image: utkarshraj309/report-service:latest
+    build:
+      context: ./report-service
+      dockerfile: Dockerfile
     container_name: stockhub-report
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -244,10 +264,12 @@ services:
     networks:
       - stockhub-network
 
-  # ─── API Gateway ───────────────────────────────────────────────────────
+  # ─── API Gateway (last — needs all services registered in Eureka) ───────
 
   api-gateway:
-    image: utkarshraj309/api-gateway:latest
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
     container_name: stockhub-gateway
     environment:
       SPRING_PROFILES_ACTIVE: prod
@@ -265,13 +287,13 @@ services:
     networks:
       - stockhub-network
 
-# ─── Volumes ───────────────────────────────────────────────────────────────
+# ─── Volumes (persistent data survives container restarts) ─────────────────
 volumes:
   mysql-data:
   rabbitmq-data:
   redis-data:
 
-# ─── Network ───────────────────────────────────────────────────────────────
+# ─── Network (all containers talk to each other by service name) ───────────
 networks:
   stockhub-network:
     driver: bridge
